@@ -505,7 +505,7 @@
 
    real (r8) start_time,end_time 
 
-   real (r8), dimension(nx_block,ny_block,km) :: RHOK1,RHOK1M,WORK,WORK3,WORK4
+   real (r8), dimension(nx_block,ny_block,km) :: RHOK1,RHOK2,WORK,WORK3,WORK4
 
    real (r8), dimension(nx_block,ny_block) :: & 
       FX,FY,              &! sum of r.h.s. forcing terms
@@ -576,14 +576,22 @@
          print *,"temp is ",TRCR(1,1,1,1)
  
          print *,"calling my_state by aketh"
-         call my_state_advt(TRCR(:,:,:,1),TRCR(:,:,:,2),RHOFULL=RHOK1) 
-         print *,"my_state returns ",RHOK1(1,1,1)
+         call my_state_advt(TRCR(:,:,:,1),TRCR(:,:,:,2),RHOOUT_WORK4=WORK) 
+         print *,"my_state returns ",WORK(1,1,1)
 
          print *,"calling regular by aketh"
          do myk=1,km
-         call state(1,myk,TRCR(:,:,myk,1),TRCR(:,:,myk,2),this_block,RHOFULL=WORK(:,:,myk))
+
+         !call state(1,myk,TRCR(:,:,myk,1),TRCR(:,:,myk,2),this_block,RHOOUT=RHOK1(:,:,myk))
+         !if(myk /= 1)then
+         !call state(myk-1,myk,TRCR(:,:,myk-1,1),TRCR(:,:,myk-1,2),this_block,RHOOUT=RHOK1(:,:,myk-1))
+
+         if(myk /= km)then
+         call state(myk+1,myk,TRCR(:,:,myk+1,1),TRCR(:,:,myk+1,2),this_block,RHOOUT=RHOK1(:,:,myk+1))
+            
+         endif 
          enddo
-         print *,"regular state returns",WORK(1,1,1) 
+         print *,"regular state returns",RHOK1(1,1,1) 
 
          if(all(RHOK1 .eq. WORK))then  
          print *,"equal"

@@ -411,9 +411,9 @@
 #else
       SQR = sqrt(SQ)
 #endif
-      if(kk==1)then 
+      !if(kk==2)then 
       !print *,"in regular state TQ,SQ,SQR are",TQ(1,1),SQ(1,1),SQR(1,1) 
-      endif
+      !endif
 
       !***
       !*** first calculate numerator of MWJF density [P_1(S,T,p)]
@@ -431,9 +431,9 @@
               mwjfnums0t3 * TQ)) + SQ * (mwjfnums1t0 +              &
               mwjfnums1t1 * TQ + mwjfnums2t0 * SQ)
 
-      if(kk==1)then
+      !if(kk==2 .and. my_task==master_task)then
       !print *,"in regular state WORK1 are",WORK1(1,1)
-      endif
+      !endif
 
 
       !***
@@ -2343,7 +2343,7 @@
  end subroutine lsqsl2
 
       !dir$ attributes offload : mic :: mystate
-      subroutine my_state_advt(TEMPK, SALTK, RHOOUT, RHOFULL)
+      subroutine my_state_advt(TEMPK, SALTK, RHOOUT_WORK, RHOOUT_WORK3,RHOFULL)
 
 
       integer  (int_kind) i,j,k
@@ -2383,8 +2383,9 @@
  
 
       real (r8), dimension(nx_block,ny_block,km),optional, intent(out) :: & 
-      RHOOUT,  &! perturbation density of water
-      RHOFULL   ! full density of water
+      RHOOUT_WORK,  &! perturbation density of water
+      RHOFULL,      &! full density of water
+      RHOOUT_WORK3
 
 
       real (r8), dimension(nx_block,ny_block,km), intent(in) :: & 
@@ -2392,9 +2393,10 @@
       SALTK               ! salinity    at level k
 
       real (r8), dimension(nx_block,ny_block,km) :: &
-      TQ,SQ,             &! adjusted T,S
-      SQR,DENOMK,        &
-      WORK1, WORK2, WORK3, WORK4  
+      TQ,SQ,              &! adjusted T,S
+      SQR,DENOMK,DENOMKM1,&
+      WORK1, WORK2, WORK3,&
+      WORK4,WORK1KM1,WORK1KP1,WORK2KM1,WORK2KP1  
 
       real (r8) ::      & 
       tmin, tmax,       &! valid temperature range for level k
@@ -2469,6 +2471,8 @@
       
       !print *,"in my_state after sqrt is TQ,SQ,SQR is",TQ(1,1,1),SQ(1,1,1),SQR(1,1,1) 
 
+      if(present(RHOOUT_WORK)) then
+
       WORK1(i,j,k) = mwjfnums0t0(k) + TQ(i,j,k) * (mwjfnums0t1 + TQ(i,j,k) *(mwjfnums0t2(k) + &
               mwjfnums0t3 * TQ(i,j,k) )) + SQ(i,j,k) * (mwjfnums1t0(k) + &
               mwjfnums1t1 * TQ(i,j,k) + mwjfnums2t0 * SQ(i,j,k) )
@@ -2480,12 +2484,35 @@
            SQ(i,j,k) * (mwjfdens1t0 + TQ(i,j,k) * (mwjfdens1t1 + TQ(i,j,k) * TQ(i,j,k) *mwjfdens1t3)+ &
            SQR(i,j,k) * (mwjfdensqt0 + TQ(i,j,k) * TQ(i,j,k) *mwjfdensqt2))
 
-
       DENOMK(i,j,k) = c1/WORK2(i,j,k)
 
-      if(present(RHOOUT)) then 
-      RHOOUT(i,j,k)  = WORK1(i,j,k) * DENOMK(i,j,k)
+      RHOOUT_WORK(i,j,k)  = WORK1(i,j,k) * DENOMK(i,j,k)
+
       endif 
+
+      if(k /= 1)then 
+      if(present(RHOOUT_WORK3)) then 
+
+      WORK1KM1(i,j,k-1) = mwjfnums0t0(k) + TQ(i,j,k-1) * (mwjfnums0t1 + TQ(i,j,k-1) *(mwjfnums0t2(k) + &
+              mwjfnums0t3 * TQ(i,j,k-1) )) + SQ(i,j,k-1) * (mwjfnums1t0(k) + &
+              mwjfnums1t1 * TQ(i,j,k-1) + mwjfnums2t0 * SQ(i,j,k-1) )
+
+      !if(my_task == master_task )then
+      !print *,"in my_state WORK1 are",WORK1KM1(1,1,1)   
+      !endif
+ 
+
+      WORK2KM1(i,j,k-1) = mwjfdens0t0(k) + TQ(i,j,k-1) * (mwjfdens0t1(k) + TQ(i,j,k-1) * (mwjfdens0t2 +    &
+           TQ(i,j,k-1) * (mwjfdens0t3(k) + mwjfdens0t4 * TQ(i,j,k-1) ))) + &
+           SQ(i,j,k-1) * (mwjfdens1t0 + TQ(i,j,k-1) * (mwjfdens1t1 + TQ(i,j,k-1) * TQ(i,j,k-1) *mwjfdens1t3)+ &
+           SQR(i,j,k-1) * (mwjfdensqt0 + TQ(i,j,k-1) * TQ(i,j,k-1) *mwjfdensqt2))
+
+      DENOMKM1(i,j,k-1) = c1/WORK2KM1(i,j,k-1)
+
+      RHOOUT_WORK3(i,j,k-1)  = WORK1KM1(i,j,k-1) * DENOMKM1(i,j,k-1) 
+
+      endif
+      endif
 
       if (present(RHOFULL)) then
       RHOFULL(i,j,k) = WORK1(i,j,k) * DENOMK(i,j,k)
