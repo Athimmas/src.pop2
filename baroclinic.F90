@@ -568,14 +568,43 @@
 !
 !-----------------------------------------------------------------------
 
+         if(my_task == master_task)then
          TRCR = TRACER (:,:,:,:,curtime,iblock)
          if(k==1)then
 
+         print *,"salinity is ",TRCR(1,1,1,2)
+         print *,"temp is ",TRCR(1,1,1,1)
+ 
+         print *,"calling my_state by aketh"
          call my_state_advt(TRCR(:,:,:,1),TRCR(:,:,:,2),RHOFULL=RHOK1) 
+         print *,"my_state returns ",RHOK1(1,1,1)
+
+         print *,"calling regular by aketh"
+         do myk=1,km
+         call state(1,myk,TRCR(:,:,myk,1),TRCR(:,:,myk,2),this_block,RHOFULL=WORK(:,:,myk))
+         enddo
+         print *,"regular state returns",WORK(1,1,1) 
+
+         if(all(RHOK1 .eq. WORK))then  
+         print *,"equal"
+         else
+         print *,"unequal"
+         endif 
+
+         do myk=1,km
+          do j=1,ny_block
+           do i=1,nx_block
+ 
+           if(RHOK1(i,j,myk) /= WORK(i,j,myk))then
+           print *,"diff is in ",i,j,myk,"with values of RHOK and WORK",RHOK1(i,j,myk),WORK(i,j,myk)   
+           endif 
+           enddo
+          enddo
+         enddo   
 
          endif          
-         
-
+         endif        
+ 
          if (lsmft_avail) then
             call vmix_coeffs(k,TRACER (:,:,:,:,mixtime,iblock), &
                                UVEL   (:,:,:  ,mixtime,iblock), &

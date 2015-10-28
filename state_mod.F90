@@ -387,7 +387,6 @@
 
    end select
 
-!-----------------------------------------------------------------------
 !
 !  now compute density or expansion coefficients
 !
@@ -406,13 +405,15 @@
    case (state_type_mwjf)
 
       p   = c10*pressz(kk)
-
       SQ  = c1000*SQ
 #ifdef CCSMCOUPLED
       call shr_vmath_sqrt(SQ, SQR, nx_block*ny_block)
 #else
       SQR = sqrt(SQ)
 #endif
+      if(kk==1)then 
+      !print *,"in regular state TQ,SQ,SQR are",TQ(1,1),SQ(1,1),SQR(1,1) 
+      endif
 
       !***
       !*** first calculate numerator of MWJF density [P_1(S,T,p)]
@@ -429,6 +430,11 @@
       WORK1 = mwjfnums0t0 + TQ * (mwjfnums0t1 + TQ * (mwjfnums0t2 + &
               mwjfnums0t3 * TQ)) + SQ * (mwjfnums1t0 +              &
               mwjfnums1t1 * TQ + mwjfnums2t0 * SQ)
+
+      if(kk==1)then
+      !print *,"in regular state WORK1 are",WORK1(1,1)
+      endif
+
 
       !***
       !*** now calculate denominator of MWJF density [P_2(S,T,p)]
@@ -2390,9 +2396,6 @@
       SQR,DENOMK,        &
       WORK1, WORK2, WORK3, WORK4  
 
-      real (r8), dimension(km) :: pressz 
-        
-
       real (r8) ::      & 
       tmin, tmax,       &! valid temperature range for level k
       smin, smax        ! valid salinity    range for level k
@@ -2405,13 +2408,15 @@
       mwjfdens1t0, mwjfdens1t1, mwjfdens1t3, &
       mwjfdensqt0, mwjfdensqt2
 
-      real (r8),dimension(8,km) :: mwjfnums0t0,mwjfnums0t2,mwjfnums1t0
+      real (r8) :: mwjfnums0t0(60),mwjfnums0t2(60),mwjfnums1t0(60)
 
-      real (r8),dimension(8,km) :: mwjfdens0t0,mwjfdens0t1,mwjfdens0t3
+      real (r8) :: mwjfdens0t0(60),mwjfdens0t1(60),mwjfdens0t3(60)
  
 
       tmin =  -2.0_r8  ! limited   on the low  end
       tmax = 999.0_r8  ! unlimited on the high end
+
+
       smin =   0.0_r8  ! limited   on the low  end
       smax = 0.999_r8  ! unlimited on the high end
  
@@ -2432,40 +2437,46 @@
       mwjfdensqt0 = mwjfdp0sqt0
       mwjfdensqt2 = mwjfdp0sqt2
 
+
       do k=1,km
+      p = c10*pressz(k)
 
-      p   = c10*pressz(k)
+      mwjfnums0t0(k) = mwjfnp0s0t0 + p*(mwjfnp1s0t0 + p*mwjfnp2s0t0)
+      mwjfnums0t2(k) = mwjfnp0s0t2 + p*(mwjfnp1s0t2 + p*mwjfnp2s0t2)
+      mwjfnums1t0(k) = mwjfnp0s1t0 + p*mwjfnp1s1t0
 
-      mwjfnums0t0(1,k) = mwjfnp0s0t0 + p*(mwjfnp1s0t0 + p*mwjfnp2s0t0)
-      mwjfnums0t2(1,k) = mwjfnp0s0t2 + p*(mwjfnp1s0t2 + p*mwjfnp2s0t2)
-      mwjfnums1t0(1,k) = mwjfnp0s1t0 + p*mwjfnp1s1t0
+      mwjfdens0t0(k) = mwjfdp0s0t0 + p*mwjfdp1s0t0
+      mwjfdens0t1(k) = mwjfdp0s0t1 + p**3 * mwjfdp3s0t1
+      mwjfdens0t3(k) = mwjfdp0s0t3 + p**2 * mwjfdp2s0t3
+      enddo 
 
-      mwjfdens0t0(1,k) = mwjfdp0s0t0 + p*mwjfdp1s0t0
-      mwjfdens0t1(1,k) = mwjfdp0s0t1 + p**3 * mwjfdp3s0t1
-      mwjfdens0t3(1,k) = mwjfdp0s0t3 + p**2 * mwjfdp2s0t3
-
-      enddo
-
-
+ 
       start_time = omp_get_wtime()
 
       do k=1,km
       do j=1,ny_block
       do i=1,nx_block
+
       TQ(i,j,k) = min(TEMPK(i,j,k),tmax)
       TQ(i,j,k) = max(TQ(i,j,k),tmin)
+
       SQ(i,j,k) = min(SALTK(i,j,k),smax)
       SQ(i,j,k) = max(SQ(i,j,k),smin)
 
       SQ(i,j,k)  = c1000 * SQ(i,j,k)
       SQR(i,j,k) = sqrt( SQ(i,j,k) )
 
-      WORK1(i,j,k) = mwjfnums0t0(1,k) + TQ(i,j,k) * (mwjfnums0t1 + TQ(i,j,k) *(mwjfnums0t2(1,k) + &
-              mwjfnums0t3 * TQ(i,j,k) )) + SQ(i,j,k) * (mwjfnums1t0(1,k) + &
+      
+      !print *,"in my_state after sqrt is TQ,SQ,SQR is",TQ(1,1,1),SQ(1,1,1),SQR(1,1,1) 
+
+      WORK1(i,j,k) = mwjfnums0t0(k) + TQ(i,j,k) * (mwjfnums0t1 + TQ(i,j,k) *(mwjfnums0t2(k) + &
+              mwjfnums0t3 * TQ(i,j,k) )) + SQ(i,j,k) * (mwjfnums1t0(k) + &
               mwjfnums1t1 * TQ(i,j,k) + mwjfnums2t0 * SQ(i,j,k) )
 
-      WORK2(i,j,k) = mwjfdens0t0(1,k) + TQ(i,j,k) * (mwjfdens0t1(1,k) + TQ(i,j,k) * (mwjfdens0t2 +    &
-           TQ(i,j,k) * (mwjfdens0t3(1,k) + mwjfdens0t4 * TQ(i,j,k) ))) + &
+      !print *,"in my_state WORK1 are",WORK1(1,1,1)
+
+      WORK2(i,j,k) = mwjfdens0t0(k) + TQ(i,j,k) * (mwjfdens0t1(k) + TQ(i,j,k) * (mwjfdens0t2 +    &
+           TQ(i,j,k) * (mwjfdens0t3(k) + mwjfdens0t4 * TQ(i,j,k) ))) + &
            SQ(i,j,k) * (mwjfdens1t0 + TQ(i,j,k) * (mwjfdens1t1 + TQ(i,j,k) * TQ(i,j,k) *mwjfdens1t3)+ &
            SQR(i,j,k) * (mwjfdensqt0 + TQ(i,j,k) * TQ(i,j,k) *mwjfdensqt2))
 
@@ -2483,7 +2494,7 @@
       enddo
       enddo
       enddo
- 
+
       end_time = omp_get_wtime() 
 
 
