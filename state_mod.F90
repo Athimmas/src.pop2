@@ -419,6 +419,10 @@
       !*** first calculate numerator of MWJF density [P_1(S,T,p)]
       !***
 
+      !if(kk == 4 .and. my_task==master_task )then
+      !print *,"in regular state TQ,SQ,SQR are",TQ(12,13),SQ(12,13),SQR(12,13),"when kk is",kk
+      !endif
+ 
       mwjfnums0t0 = mwjfnp0s0t0 + p*(mwjfnp1s0t0 + p*mwjfnp2s0t0)
       mwjfnums0t1 = mwjfnp0s0t1 
       mwjfnums0t2 = mwjfnp0s0t2 + p*(mwjfnp1s0t2 + p*mwjfnp2s0t2)
@@ -431,8 +435,8 @@
               mwjfnums0t3 * TQ)) + SQ * (mwjfnums1t0 +              &
               mwjfnums1t1 * TQ + mwjfnums2t0 * SQ)
 
-      !if(kk==2 .and. my_task==master_task)then
-      !print *,"in regular state WORK1 are",WORK1(1,1)
+      !if(kk == 4 .and. my_task==master_task )then
+      !print *,"in regular state WORK1 are",WORK1(12,13),"when kk is",kk
       !endif
 
 
@@ -2342,8 +2346,7 @@
 
  end subroutine lsqsl2
 
-      !dir$ attributes offload : mic :: mystate
-      subroutine my_state_advt(TEMPK, SALTK, RHOOUT_WORK, RHOOUT_WORK3,RHOFULL)
+      subroutine my_state_advt(TEMPK,SALTK, RHOOUT_WORK,RHOOUT_WORK3,RHOOUT_WORK4,RHOFULL)
 
 
       integer  (int_kind) i,j,k
@@ -2385,7 +2388,8 @@
       real (r8), dimension(nx_block,ny_block,km),optional, intent(out) :: & 
       RHOOUT_WORK,  &! perturbation density of water
       RHOFULL,      &! full density of water
-      RHOOUT_WORK3
+      RHOOUT_WORK3, &
+      RHOOUT_WORK4 
 
 
       real (r8), dimension(nx_block,ny_block,km), intent(in) :: & 
@@ -2396,7 +2400,8 @@
       TQ,SQ,              &! adjusted T,S
       SQR,DENOMK,DENOMKM1,&
       WORK1, WORK2, WORK3,&
-      WORK4,WORK1KM1,WORK1KP1,WORK2KM1,WORK2KP1  
+      WORK4,WORK1KM1,WORK1KP1,WORK2KM1,WORK2KP1,&
+      DENOMKP1  
 
       real (r8) ::      & 
       tmin, tmax,       &! valid temperature range for level k
@@ -2410,9 +2415,9 @@
       mwjfdens1t0, mwjfdens1t1, mwjfdens1t3, &
       mwjfdensqt0, mwjfdensqt2
 
-      real (r8) :: mwjfnums0t0(60),mwjfnums0t2(60),mwjfnums1t0(60)
+      real (r8) :: mwjfnums0t0(km),mwjfnums0t2(km),mwjfnums1t0(km)
 
-      real (r8) :: mwjfdens0t0(60),mwjfdens0t1(60),mwjfdens0t3(60)
+      real (r8) :: mwjfdens0t0(km),mwjfdens0t1(km),mwjfdens0t3(km)
  
 
       tmin =  -2.0_r8  ! limited   on the low  end
@@ -2513,6 +2518,45 @@
 
       endif
       endif
+
+      if(k < km)then
+      if(present(RHOOUT_WORK4)) then
+
+      TQ(i,j,k+1) = min(TEMPK(i,j,k+1),tmax)
+      TQ(i,j,k+1) = max(TQ(i,j,k+1),tmin)
+
+      SQ(i,j,k+1) = min(SALTK(i,j,k+1),smax)
+      SQ(i,j,k+1) = max(SQ(i,j,k+1),smin)
+
+      SQ(i,j,k+1)  = c1000 * SQ(i,j,k+1)
+      SQR(i,j,k+1) = sqrt( SQ(i,j,k+1) )
+ 
+
+      !if(k == 4 .and. my_task==master_task )then
+      !print *,"in my_state TQ,SQ,SQR are",TQ(12,13,k+1),SQ(12,13,k+1),SQR(12,13,k+1),"when k is",k
+      !endif
+
+      WORK1KP1(i,j,k+1) = mwjfnums0t0(k) + TQ(i,j,k+1) * (mwjfnums0t1 + TQ(i,j,k+1) *(mwjfnums0t2(k) + &
+              mwjfnums0t3 * TQ(i,j,k+1) )) + SQ(i,j,k+1) * (mwjfnums1t0(k) + &
+              mwjfnums1t1 * TQ(i,j,k+1) + mwjfnums2t0 * SQ(i,j,k+1) )
+
+      !if(my_task == master_task .and. k==4 .and. i==12 .and. j==13)then
+      !print *,"in my_state WORK1 are",WORK1KP1(12,13,k+1),"for i,j,k",i,j,k    
+      !endif
+
+
+      WORK2KP1(i,j,k+1) = mwjfdens0t0(k) + TQ(i,j,k+1) * (mwjfdens0t1(k) + TQ(i,j,k+1) * (mwjfdens0t2 +    &
+           TQ(i,j,k+1) * (mwjfdens0t3(k) + mwjfdens0t4 * TQ(i,j,k+1) ))) + &
+           SQ(i,j,k+1) * (mwjfdens1t0 + TQ(i,j,k+1) * (mwjfdens1t1 + TQ(i,j,k+1) * TQ(i,j,k+1) *mwjfdens1t3)+ &
+           SQR(i,j,k+1) * (mwjfdensqt0 + TQ(i,j,k+1) * TQ(i,j,k+1) *mwjfdensqt2))
+
+      DENOMKP1(i,j,k+1) = c1/WORK2KP1(i,j,k+1)
+
+      RHOOUT_WORK4(i,j,k+1)  = WORK1KP1(i,j,k+1) * DENOMKP1(i,j,k+1)
+
+      endif
+      endif
+
 
       if (present(RHOFULL)) then
       RHOFULL(i,j,k) = WORK1(i,j,k) * DENOMK(i,j,k)

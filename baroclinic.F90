@@ -550,6 +550,49 @@
 !-----------------------------------------------------------------------
 
 
+    if(my_task == master_task)then
+         TRCR = TRACER (:,:,:,:,curtime,1) 
+         print *,"salinity is ",TRCR(12,13,5,2)
+         print *,"temp is ",TRCR(12,13,5,1)
+
+         print *,"calling my_state by aketh"
+         call my_state_advt(TRCR(:,:,:,1),TRCR(:,:,:,2),RHOOUT_WORK4=WORK)
+         print *,"my_state returns ",WORK(12,13,5)
+
+         print *,"calling regular by aketh"
+
+         do myk=1,km
+         !call
+         !state(1,myk,TRCR(:,:,myk,1),TRCR(:,:,myk,2),this_block,RHOOUT=RHOK1(:,:,myk))
+         !if(myk /= 1)then
+         !call
+         !state(myk-1,myk,TRCR(:,:,myk-1,1),TRCR(:,:,myk-1,2),this_block,RHOOUT=RHOK1(:,:,myk-1))
+         if(myk /= km)then
+         call state(myk+1,myk,TRCR(:,:,myk+1,1),TRCR(:,:,myk+1,2),this_block,RHOOUT=RHOK1(:,:,myk+1))
+         endif 
+         enddo
+
+         print *,"regular state returns",RHOK1(12,13,5)     
+
+         if(all(RHOK1 .eq. WORK))then  
+         print *,"equal"
+         else
+         print *,"unequal"
+         endif 
+
+         do myk=1,km
+          do j=1,ny_block
+           do i=1,nx_block
+ 
+           if(RHOK1(i,j,myk) /= WORK(i,j,myk))then
+           print *,"diff is in ",i,j,myk,"with values of RHOK and WORK",RHOK1(i,j,myk),WORK(i,j,myk)   
+           endif 
+          enddo
+         enddo
+        enddo   
+    endif    
+
+
    !$OMP PARALLEL DO PRIVATE(iblock,this_block,k,kp1,km1,WTK,WORK1,factor)
 
    do iblock = 1,nblocks_clinic
@@ -568,51 +611,6 @@
 !
 !-----------------------------------------------------------------------
 
-         if(my_task == master_task)then
-         TRCR = TRACER (:,:,:,:,curtime,iblock)
-         if(k==1)then
-
-         print *,"salinity is ",TRCR(1,1,1,2)
-         print *,"temp is ",TRCR(1,1,1,1)
- 
-         print *,"calling my_state by aketh"
-         call my_state_advt(TRCR(:,:,:,1),TRCR(:,:,:,2),RHOOUT_WORK4=WORK) 
-         print *,"my_state returns ",WORK(1,1,1)
-
-         print *,"calling regular by aketh"
-         do myk=1,km
-
-         !call state(1,myk,TRCR(:,:,myk,1),TRCR(:,:,myk,2),this_block,RHOOUT=RHOK1(:,:,myk))
-         !if(myk /= 1)then
-         !call state(myk-1,myk,TRCR(:,:,myk-1,1),TRCR(:,:,myk-1,2),this_block,RHOOUT=RHOK1(:,:,myk-1))
-
-         if(myk /= km)then
-         call state(myk+1,myk,TRCR(:,:,myk+1,1),TRCR(:,:,myk+1,2),this_block,RHOOUT=RHOK1(:,:,myk+1))
-            
-         endif 
-         enddo
-         print *,"regular state returns",RHOK1(1,1,1) 
-
-         if(all(RHOK1 .eq. WORK))then  
-         print *,"equal"
-         else
-         print *,"unequal"
-         endif 
-
-         do myk=1,km
-          do j=1,ny_block
-           do i=1,nx_block
- 
-           if(RHOK1(i,j,myk) /= WORK(i,j,myk))then
-           print *,"diff is in ",i,j,myk,"with values of RHOK and WORK",RHOK1(i,j,myk),WORK(i,j,myk)   
-           endif 
-           enddo
-          enddo
-         enddo   
-
-         endif          
-         endif        
- 
          if (lsmft_avail) then
             call vmix_coeffs(k,TRACER (:,:,:,:,mixtime,iblock), &
                                UVEL   (:,:,:  ,mixtime,iblock), &
