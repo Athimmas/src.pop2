@@ -505,7 +505,7 @@
 
    real (r8) start_time,end_time 
 
-   real (r8), dimension(nx_block,ny_block,km) :: RHOK1,RHOK2,WORK,WORK3,WORK4
+   real (r8), dimension(nx_block,ny_block,km) :: RHOK1,RHOK2,RHOK3,RHOKF,RHOK,WORK,WORK3,WORK4,WORKF
 
    real (r8), dimension(nx_block,ny_block) :: & 
       FX,FY,              &! sum of r.h.s. forcing terms
@@ -550,29 +550,29 @@
 !-----------------------------------------------------------------------
 
 
-    if(my_task == master_task)then
+         if(my_task == master_task)then
          TRCR = TRACER (:,:,:,:,curtime,1) 
-         print *,"salinity is ",TRCR(12,13,5,2)
-         print *,"temp is ",TRCR(12,13,5,1)
+         !print *,"salinity is ",TRCR(3,5,2,2)
+         !print *,"temp is ",TRCR(3,5,2,1)
 
-         print *,"calling my_state by aketh"
-         call my_state_advt(TRCR(:,:,:,1),TRCR(:,:,:,2),RHOOUT_WORK4=WORK)
-         print *,"my_state returns ",WORK(12,13,5)
+         !print *,"calling my_state by aketh"
+         call my_state_advt(TRCR(:,:,:,1),TRCR(:,:,:,2),&
+         RHOFULL=WORKF,RHO_WORK3=WORK3,RHO_WORK4=WORK4,RHOOUT_WORK=WORK)
+         !print *,"my_state returns ",WORK(3,5,2)
 
-         print *,"calling regular by aketh"
+         !print *,"calling regular by aketh"
 
          do myk=1,km
-         !call
-         !state(1,myk,TRCR(:,:,myk,1),TRCR(:,:,myk,2),this_block,RHOOUT=RHOK1(:,:,myk))
+         call state(1,myk,TRCR(:,:,myk,1),TRCR(:,:,myk,2),this_block,RHOOUT=RHOK(:,:,myk))
          !if(myk /= 1)then
-         !call
-         !state(myk-1,myk,TRCR(:,:,myk-1,1),TRCR(:,:,myk-1,2),this_block,RHOOUT=RHOK1(:,:,myk-1))
-         if(myk /= km)then
-         call state(myk+1,myk,TRCR(:,:,myk+1,1),TRCR(:,:,myk+1,2),this_block,RHOOUT=RHOK1(:,:,myk+1))
-         endif 
+         call state(myk-1,myk,TRCR(:,:,myk-1,1),TRCR(:,:,myk-1,2),this_block,RHOOUT=RHOK3(:,:,myk-1))
+         !if(myk /= km)then
+         call state(myk+1,myk,TRCR(:,:,myk+1,1),TRCR(:,:,myk+1,2),this_block,RHOOUT=RHOK4(:,:,myk+1))
+         !endif 
+         call state(myk,1,TRCR(:,:,myk,1), TRCR(:,:,myk,2), this_block, RHOFULL=RHOKF(:,:,myk))
          enddo
 
-         print *,"regular state returns",RHOK1(12,13,5)     
+         !print *,"regular state returns",RHOK1(3,5,2)     
 
          if(all(RHOK1 .eq. WORK))then  
          print *,"equal"
@@ -580,16 +580,37 @@
          print *,"unequal"
          endif 
 
-         do myk=1,km
-          do j=1,ny_block
-           do i=1,nx_block
+         if(all(RHOK3 .eq. WORK3))then
+         print *,"equal"
+         else
+         print *,"unequal"
+         endif
  
-           if(RHOK1(i,j,myk) /= WORK(i,j,myk))then
-           print *,"diff is in ",i,j,myk,"with values of RHOK and WORK",RHOK1(i,j,myk),WORK(i,j,myk)   
-           endif 
-          enddo
-         enddo
-        enddo   
+         if(all(RHOK4 .eq. WORK4))then
+         print *,"equal"
+         else
+         print *,"unequal"
+         endif
+
+         if(all(RHOKF .eq. WORKF))then
+         print *,"equal"
+         else
+         print *,"unequal"
+         endif
+  
+
+
+
+         !do myk=1,km
+          !do j=1,ny_block
+           !do i=1,nx_block
+ 
+           !if(RHOK1(i,j,myk) /= WORK(i,j,myk))then
+           !print *,"diff is in ",i,j,myk,"with values of RHOK and WORK",RHOK1(i,j,myk),WORK(i,j,myk)   
+           !endif 
+          !enddo
+         !enddo
+        !enddo   
     endif    
 
 

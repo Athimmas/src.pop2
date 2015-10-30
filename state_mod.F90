@@ -411,18 +411,14 @@
 #else
       SQR = sqrt(SQ)
 #endif
-      !if(kk==2)then 
-      !print *,"in regular state TQ,SQ,SQR are",TQ(1,1),SQ(1,1),SQR(1,1) 
+      !if(kk==1 .and. my_task==master_task)then 
+      !print *,"in regular state TQ,SQ,SQR are",TQ(2,2),SQ(2,2),SQR(2,2) 
       !endif
 
       !***
       !*** first calculate numerator of MWJF density [P_1(S,T,p)]
       !***
 
-      !if(kk == 4 .and. my_task==master_task )then
-      !print *,"in regular state TQ,SQ,SQR are",TQ(12,13),SQ(12,13),SQR(12,13),"when kk is",kk
-      !endif
- 
       mwjfnums0t0 = mwjfnp0s0t0 + p*(mwjfnp1s0t0 + p*mwjfnp2s0t0)
       mwjfnums0t1 = mwjfnp0s0t1 
       mwjfnums0t2 = mwjfnp0s0t2 + p*(mwjfnp1s0t2 + p*mwjfnp2s0t2)
@@ -435,8 +431,8 @@
               mwjfnums0t3 * TQ)) + SQ * (mwjfnums1t0 +              &
               mwjfnums1t1 * TQ + mwjfnums2t0 * SQ)
 
-      !if(kk == 4 .and. my_task==master_task )then
-      !print *,"in regular state WORK1 are",WORK1(12,13),"when kk is",kk
+      !if(kk == 1 .and. my_task==master_task )then
+      !print *,"in regular state WORK1 are",WORK1(2,2),"when kk is",kk
       !endif
 
 
@@ -2390,6 +2386,7 @@
       RHOFULL,      &! full density of water
       RHOOUT_WORK3, &
       RHOOUT_WORK4 
+      
 
 
       real (r8), dimension(nx_block,ny_block,km), intent(in) :: & 
@@ -2401,8 +2398,11 @@
       SQR,DENOMK,DENOMKM1,&
       WORK1, WORK2, WORK3,&
       WORK4,WORK1KM1,WORK1KP1,WORK2KM1,WORK2KP1,&
-      DENOMKP1  
-
+      DENOMKP1,&
+      WORK1_FULL,&
+      WORK2_FULL,&
+      DENOMK_FULL      
+ 
       real (r8) ::      & 
       tmin, tmax,       &! valid temperature range for level k
       smin, smax        ! valid salinity    range for level k
@@ -2474,7 +2474,6 @@
       SQR(i,j,k) = sqrt( SQ(i,j,k) )
 
       
-      !print *,"in my_state after sqrt is TQ,SQ,SQR is",TQ(1,1,1),SQ(1,1,1),SQR(1,1,1) 
 
       if(present(RHOOUT_WORK)) then
 
@@ -2494,9 +2493,9 @@
       RHOOUT_WORK(i,j,k)  = WORK1(i,j,k) * DENOMK(i,j,k)
 
       endif 
-
-      if(k /= 1)then 
+ 
       if(present(RHOOUT_WORK3)) then 
+      if(k /= 1)then
 
       WORK1KM1(i,j,k-1) = mwjfnums0t0(k) + TQ(i,j,k-1) * (mwjfnums0t1 + TQ(i,j,k-1) *(mwjfnums0t2(k) + &
               mwjfnums0t3 * TQ(i,j,k-1) )) + SQ(i,j,k-1) * (mwjfnums1t0(k) + &
@@ -2519,8 +2518,8 @@
       endif
       endif
 
-      if(k < km)then
       if(present(RHOOUT_WORK4)) then
+      if(k < km)then 
 
       TQ(i,j,k+1) = min(TEMPK(i,j,k+1),tmax)
       TQ(i,j,k+1) = max(TQ(i,j,k+1),tmin)
@@ -2557,17 +2556,28 @@
       endif
       endif
 
-
       if (present(RHOFULL)) then
-      RHOFULL(i,j,k) = WORK1(i,j,k) * DENOMK(i,j,k)
+
+      WORK1_FULL(i,j,k) = mwjfnums0t0(1) + TQ(i,j,k) * (mwjfnums0t1 + TQ(i,j,k) *(mwjfnums0t2(1) + &
+              mwjfnums0t3 * TQ(i,j,k) )) + SQ(i,j,k) * (mwjfnums1t0(1) + &
+              mwjfnums1t1 * TQ(i,j,k) + mwjfnums2t0 * SQ(i,j,k) )
+
+
+      WORK2_FULL(i,j,k) = mwjfdens0t0(1) + TQ(i,j,k) * (mwjfdens0t1(1) + TQ(i,j,k) * (mwjfdens0t2 +    &
+           TQ(i,j,k) * (mwjfdens0t3(1) + mwjfdens0t4 * TQ(i,j,k) ))) + &
+           SQ(i,j,k) * (mwjfdens1t0 + TQ(i,j,k) * (mwjfdens1t1 + TQ(i,j,k) * TQ(i,j,k) *mwjfdens1t3)+ &
+           SQR(i,j,k) * (mwjfdensqt0 + TQ(i,j,k) * TQ(i,j,k) *mwjfdensqt2))
+
+      DENOMK_FULL(i,j,k) = c1/WORK2_FULL(i,j,k)
+
+      RHOFULL(i,j,k) = WORK1_FULL(i,j,k) * DENOMK_FULL(i,j,k)
       endif
       
       enddo
       enddo
       enddo
-
-      end_time = omp_get_wtime() 
-
+ 
+      end_time = omp_get_wtime()
 
       end subroutine my_state_advt
 
