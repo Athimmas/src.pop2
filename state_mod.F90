@@ -1034,6 +1034,8 @@
       pressz(k) = pressure(zt(k)*mpercm)
    end do
 
+   !dir$ offload_transfer target(mic:0)in(pressz)signal(100) 
+
 !-----------------------------------------------------------------------
 !
 !  initialize various arrays, constants for each state type
@@ -2460,7 +2462,6 @@
       enddo 
 
  
-      start_time = omp_get_wtime()
 
       do k=1,km
       do j=1,ny_block
@@ -2584,7 +2585,6 @@
       enddo
       enddo
  
-      end_time = omp_get_wtime()
 
       end subroutine my_state_advt
 

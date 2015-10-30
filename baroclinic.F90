@@ -608,16 +608,17 @@
 
 
 
-         !do myk=1,km
-          !do j=1,ny_block
-           !do i=1,nx_block
+         do myk=1,km
+          do j=1,ny_block
+           do i=1,nx_block
  
-           !if(RHOKF(i,j,myk) /= WORKF(i,j,myk))then
-           !print *,"diff is in ",i,j,myk,"with values of RHOKF and WORKF",RHOKF(i,j,myk),WORKF(i,j,myk)   
-           !endif 
-          !enddo
-         !enddo
-        !enddo   
+           if(RHOKF(i,j,myk) /= WORKF(i,j,myk))then
+           print *,"diff is in ",i,j,myk,"with values of RHOKF and WORKF",RHOKF(i,j,myk),WORKF(i,j,myk)  
+           print *,"the difference is ",RHOKF(i,j,myk)-WORKF(i,j,myk) 
+           endif 
+          enddo
+         enddo
+        enddo   
         endif    
 
    !$OMP PARALLEL DO PRIVATE(iblock,this_block,k,kp1,km1,WTK,WORK1,factor)
