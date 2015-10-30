@@ -505,7 +505,7 @@
 
    real (r8) start_time,end_time 
 
-   real (r8), dimension(nx_block,ny_block,km) :: RHOK1,RHOK2,RHOK3,RHOKF,RHOK,WORK,WORK3,WORK4,WORKF
+   real (r8), dimension(nx_block,ny_block,km) :: RHOK1,RHOK2,RHOK3,RHOK4,RHOKF,RHOK,WORK,WORK3,WORK4,WORKF
 
    real (r8), dimension(nx_block,ny_block) :: & 
       FX,FY,              &! sum of r.h.s. forcing terms
@@ -551,30 +551,37 @@
 
 
          if(my_task == master_task)then
-         TRCR = TRACER (:,:,:,:,curtime,1) 
-         !print *,"salinity is ",TRCR(3,5,2,2)
-         !print *,"temp is ",TRCR(3,5,2,1)
 
-         !print *,"calling my_state by aketh"
+         TRCR = TRACER (:,:,:,:,mixtime,1) 
+         print *,"salinity is ",TRCR(1,1,1,2)
+         print *,"temp is ",TRCR(1,1,1,1)
+         print *,"calling my_state by aketh"
+         start_time = omp_get_wtime()
+         !dir$ offload begin target(mic:0)  
          call my_state_advt(TRCR(:,:,:,1),TRCR(:,:,:,2),&
-         RHOFULL=WORKF,RHO_WORK3=WORK3,RHO_WORK4=WORK4,RHOOUT_WORK=WORK)
-         !print *,"my_state returns ",WORK(3,5,2)
-
-         !print *,"calling regular by aketh"
+         RHOFULL=WORKF,RHOOUT_WORK4=WORK4,RHOOUT_WORK3=WORK3,RHOOUT_WORK=WORK)
+         !dir$ end offload
+         end_time = omp_get_wtime()
+         if(my_task == master_task)then
+         print *,"time at advection state",end_time - start_time 
+         endif 
+         print *,"my_state returns ",WORKF(1,1,1)
+         print *,"calling regular by aketh"
 
          do myk=1,km
          call state(1,myk,TRCR(:,:,myk,1),TRCR(:,:,myk,2),this_block,RHOOUT=RHOK(:,:,myk))
-         !if(myk /= 1)then
+         if(myk /= 1)then
          call state(myk-1,myk,TRCR(:,:,myk-1,1),TRCR(:,:,myk-1,2),this_block,RHOOUT=RHOK3(:,:,myk-1))
-         !if(myk /= km)then
+         endif
+         if(myk /= km)then
          call state(myk+1,myk,TRCR(:,:,myk+1,1),TRCR(:,:,myk+1,2),this_block,RHOOUT=RHOK4(:,:,myk+1))
-         !endif 
+         endif 
          call state(myk,1,TRCR(:,:,myk,1), TRCR(:,:,myk,2), this_block, RHOFULL=RHOKF(:,:,myk))
          enddo
 
-         !print *,"regular state returns",RHOK1(3,5,2)     
+         print *,"regular state returns",RHOKF(1,1,1)     
 
-         if(all(RHOK1 .eq. WORK))then  
+         if(all(RHOK .eq. WORK))then  
          print *,"equal"
          else
          print *,"unequal"
@@ -605,14 +612,13 @@
           !do j=1,ny_block
            !do i=1,nx_block
  
-           !if(RHOK1(i,j,myk) /= WORK(i,j,myk))then
-           !print *,"diff is in ",i,j,myk,"with values of RHOK and WORK",RHOK1(i,j,myk),WORK(i,j,myk)   
+           !if(RHOKF(i,j,myk) /= WORKF(i,j,myk))then
+           !print *,"diff is in ",i,j,myk,"with values of RHOKF and WORKF",RHOKF(i,j,myk),WORKF(i,j,myk)   
            !endif 
           !enddo
          !enddo
         !enddo   
-    endif    
-
+        endif    
 
    !$OMP PARALLEL DO PRIVATE(iblock,this_block,k,kp1,km1,WTK,WORK1,factor)
 
@@ -632,6 +638,7 @@
 !
 !-----------------------------------------------------------------------
 
+         start_time = omp_get_wtime()
          if (lsmft_avail) then
             call vmix_coeffs(k,TRACER (:,:,:,:,mixtime,iblock), &
                                UVEL   (:,:,:  ,mixtime,iblock), &
@@ -652,6 +659,11 @@
                                STF    (:,:,:          ,iblock), &
                                SHF_QSW(:,:            ,iblock), &
                                this_block, SMF=SMF(:,:,:,iblock))
+         endif
+         end_time = omp_get_wtime()
+
+         if(my_task==master_task)then
+         print *,"time at vmix_coeffs",end_time - start_time 
          endif
 
 !-----------------------------------------------------------------------
@@ -1773,12 +1785,15 @@
    real (r8), dimension(nx_block,ny_block) :: &
       WORKSW
 
+   real (r8) start_time,end_time
+
 !-----------------------------------------------------------------------
 !
 !  initialize some arrays
 !
 !-----------------------------------------------------------------------
 
+   start_time = omp_get_wtime()
 
    FT    = c0
 
@@ -1859,6 +1874,11 @@
 
       endif
 
+   endif
+
+   end_time = omp_get_wtime()
+   if(my_task==master_task)then 
+   print *,"time taken in hdifft is",end_time - start_time
    endif
 
    call advt(k,WORKN,WTK,TMIX,TCUR,UCUR,VCUR,this_block)

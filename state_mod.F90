@@ -63,6 +63,7 @@
 !
 !-----------------------------------------------------------------------
 
+   !dir$ attributes offload:mic :: pressz
    real (r8), dimension(km) :: & 
       tmin, tmax,        &! valid temperature range for level k
       smin, smax,        &! valid salinity    range for level k
@@ -412,7 +413,7 @@
       SQR = sqrt(SQ)
 #endif
       !if(kk==1 .and. my_task==master_task)then 
-      !print *,"in regular state TQ,SQ,SQR are",TQ(2,2),SQ(2,2),SQR(2,2) 
+      !print *,"in regular state TQ,SQ,SQR are",TQ(1,1),SQ(1,1),SQR(1,1) 
       !endif
 
       !***
@@ -2342,6 +2343,7 @@
 
  end subroutine lsqsl2
 
+      !dir$ attributes offload:mic :: my_state_advt
       subroutine my_state_advt(TEMPK,SALTK, RHOOUT_WORK,RHOOUT_WORK3,RHOOUT_WORK4,RHOFULL)
 
 
@@ -2473,7 +2475,9 @@
       SQ(i,j,k)  = c1000 * SQ(i,j,k)
       SQR(i,j,k) = sqrt( SQ(i,j,k) )
 
-      
+      !if(k==1 .and. my_task==master_task)then 
+      !print *,"in my_state TQ,SQ,SQR are",TQ(1,1,1),SQ(1,1,1),SQR(1,1,1) 
+      !endif         
 
       if(present(RHOOUT_WORK)) then
 
@@ -2562,6 +2566,9 @@
               mwjfnums0t3 * TQ(i,j,k) )) + SQ(i,j,k) * (mwjfnums1t0(1) + &
               mwjfnums1t1 * TQ(i,j,k) + mwjfnums2t0 * SQ(i,j,k) )
 
+      !if(my_task == master_task)then
+      !print *,"in my_state WORK1_FULL is",WORK1_FULL(1,1,1),"for i,j,k",i,j,k    
+      !endif
 
       WORK2_FULL(i,j,k) = mwjfdens0t0(1) + TQ(i,j,k) * (mwjfdens0t1(1) + TQ(i,j,k) * (mwjfdens0t2 +    &
            TQ(i,j,k) * (mwjfdens0t3(1) + mwjfdens0t4 * TQ(i,j,k) ))) + &
