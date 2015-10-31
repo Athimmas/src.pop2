@@ -2397,7 +2397,7 @@
       TEMPK,             &! temperature at level k
       SALTK               ! salinity    at level k
 
-      real (r8), dimension(nx_block,ny_block,km) :: &
+      real (r8) :: &
       TQ,SQ,              &! adjusted T,S
       SQR,DENOMK,DENOMKM1,&
       WORK1, WORK2, WORK3,&
@@ -2462,19 +2462,18 @@
       enddo 
 
  
-
       do k=1,km
       do j=1,ny_block
       do i=1,nx_block
 
-      TQ(i,j,k) = min(TEMPK(i,j,k),tmax)
-      TQ(i,j,k) = max(TQ(i,j,k),tmin)
+      TQ = min(TEMPK(i,j,k),tmax)
+      TQ = max(TQ,tmin)
 
-      SQ(i,j,k) = min(SALTK(i,j,k),smax)
-      SQ(i,j,k) = max(SQ(i,j,k),smin)
+      SQ = min(SALTK(i,j,k),smax)
+      SQ = max(SQ,smin)
 
-      SQ(i,j,k)  = c1000 * SQ(i,j,k)
-      SQR(i,j,k) = sqrt( SQ(i,j,k) )
+      SQ  = c1000 * SQ
+      SQR = sqrt( SQ )
 
       !if(k==1 .and. my_task==master_task)then 
       !print *,"in my_state TQ,SQ,SQR are",TQ(1,1,1),SQ(1,1,1),SQR(1,1,1) 
@@ -2482,43 +2481,75 @@
 
       if(present(RHOOUT_WORK)) then
 
-      WORK1(i,j,k) = mwjfnums0t0(k) + TQ(i,j,k) * (mwjfnums0t1 + TQ(i,j,k) *(mwjfnums0t2(k) + &
-              mwjfnums0t3 * TQ(i,j,k) )) + SQ(i,j,k) * (mwjfnums1t0(k) + &
-              mwjfnums1t1 * TQ(i,j,k) + mwjfnums2t0 * SQ(i,j,k) )
+      WORK1 = mwjfnums0t0(k) + TQ * (mwjfnums0t1 + TQ *(mwjfnums0t2(k) + &
+              mwjfnums0t3 * TQ )) + SQ * (mwjfnums1t0(k) + &
+              mwjfnums1t1 * TQ + mwjfnums2t0 * SQ )
 
       !print *,"in my_state WORK1 are",WORK1(1,1,1)
 
-      WORK2(i,j,k) = mwjfdens0t0(k) + TQ(i,j,k) * (mwjfdens0t1(k) + TQ(i,j,k) * (mwjfdens0t2 +    &
-           TQ(i,j,k) * (mwjfdens0t3(k) + mwjfdens0t4 * TQ(i,j,k) ))) + &
-           SQ(i,j,k) * (mwjfdens1t0 + TQ(i,j,k) * (mwjfdens1t1 + TQ(i,j,k) * TQ(i,j,k) *mwjfdens1t3)+ &
-           SQR(i,j,k) * (mwjfdensqt0 + TQ(i,j,k) * TQ(i,j,k) *mwjfdensqt2))
+      WORK2 = mwjfdens0t0(k) + TQ * (mwjfdens0t1(k) + TQ * (mwjfdens0t2 +    &
+           TQ * (mwjfdens0t3(k) + mwjfdens0t4 * TQ ))) + &
+           SQ * (mwjfdens1t0 + TQ * (mwjfdens1t1 + TQ * TQ *mwjfdens1t3)+ &
+           SQR * (mwjfdensqt0 + TQ * TQ *mwjfdensqt2))
 
-      DENOMK(i,j,k) = c1/WORK2(i,j,k)
+      DENOMK = c1/WORK2
 
-      RHOOUT_WORK(i,j,k)  = WORK1(i,j,k) * DENOMK(i,j,k)
+      RHOOUT_WORK(i,j,k)  = WORK1 * DENOMK
 
       endif 
+
+      if (present(RHOFULL)) then
+
+      WORK1_FULL = mwjfnums0t0(1) + TQ * (mwjfnums0t1 + TQ *(mwjfnums0t2(1) + &
+              mwjfnums0t3 * TQ )) + SQ * (mwjfnums1t0(1) + &
+              mwjfnums1t1 * TQ + mwjfnums2t0 * SQ )
+
+      !if(my_task == master_task)then
+      !print *,"in my_state WORK1_FULL is",WORK1_FULL(1,1,1),"for i,j,k",i,j,k    
+      !endif
+
+      WORK2_FULL = mwjfdens0t0(1) + TQ * (mwjfdens0t1(1) + TQ * (mwjfdens0t2 + &
+           TQ * (mwjfdens0t3(1) + mwjfdens0t4 * TQ ))) + &
+           SQ * (mwjfdens1t0 + TQ * (mwjfdens1t1 + TQ * TQ *mwjfdens1t3)+ &
+           SQR * (mwjfdensqt0 + TQ * TQ *mwjfdensqt2))
+
+      DENOMK_FULL = c1/WORK2_FULL
+
+      RHOFULL(i,j,k) = WORK1_FULL * DENOMK_FULL
+
+      endif
+
  
       if(present(RHOOUT_WORK3)) then 
       if(k /= 1)then
 
-      WORK1KM1(i,j,k-1) = mwjfnums0t0(k) + TQ(i,j,k-1) * (mwjfnums0t1 + TQ(i,j,k-1) *(mwjfnums0t2(k) + &
-              mwjfnums0t3 * TQ(i,j,k-1) )) + SQ(i,j,k-1) * (mwjfnums1t0(k) + &
-              mwjfnums1t1 * TQ(i,j,k-1) + mwjfnums2t0 * SQ(i,j,k-1) )
+      TQ = min(TEMPK(i,j,k-1),tmax)
+      TQ = max(TQ,tmin)
+
+      SQ = min(SALTK(i,j,k-1),smax)
+      SQ = max(SQ,smin)
+
+      SQ  = c1000 * SQ
+      SQR = sqrt( SQ )
+ 
+
+      WORK1KM1 = mwjfnums0t0(k) + TQ * (mwjfnums0t1 + TQ *(mwjfnums0t2(k) + &
+              mwjfnums0t3 * TQ )) + SQ * (mwjfnums1t0(k) + &
+              mwjfnums1t1 * TQ + mwjfnums2t0 * SQ )
 
       !if(my_task == master_task )then
       !print *,"in my_state WORK1 are",WORK1KM1(1,1,1)   
       !endif
  
 
-      WORK2KM1(i,j,k-1) = mwjfdens0t0(k) + TQ(i,j,k-1) * (mwjfdens0t1(k) + TQ(i,j,k-1) * (mwjfdens0t2 +    &
-           TQ(i,j,k-1) * (mwjfdens0t3(k) + mwjfdens0t4 * TQ(i,j,k-1) ))) + &
-           SQ(i,j,k-1) * (mwjfdens1t0 + TQ(i,j,k-1) * (mwjfdens1t1 + TQ(i,j,k-1) * TQ(i,j,k-1) *mwjfdens1t3)+ &
-           SQR(i,j,k-1) * (mwjfdensqt0 + TQ(i,j,k-1) * TQ(i,j,k-1) *mwjfdensqt2))
+      WORK2KM1 = mwjfdens0t0(k) + TQ * (mwjfdens0t1(k) + TQ * (mwjfdens0t2 +    &
+           TQ * (mwjfdens0t3(k) + mwjfdens0t4 * TQ ))) + &
+           SQ * (mwjfdens1t0 + TQ * (mwjfdens1t1 + TQ * TQ *mwjfdens1t3)+ &
+           SQR * (mwjfdensqt0 + TQ * TQ *mwjfdensqt2))
 
-      DENOMKM1(i,j,k-1) = c1/WORK2KM1(i,j,k-1)
+      DENOMKM1 = c1/WORK2KM1
 
-      RHOOUT_WORK3(i,j,k-1)  = WORK1KM1(i,j,k-1) * DENOMKM1(i,j,k-1) 
+      RHOOUT_WORK3(i,j,k-1)  = WORK1KM1 * DENOMKM1 
 
       endif
       endif
@@ -2526,59 +2557,39 @@
       if(present(RHOOUT_WORK4)) then
       if(k < km)then 
 
-      TQ(i,j,k+1) = min(TEMPK(i,j,k+1),tmax)
-      TQ(i,j,k+1) = max(TQ(i,j,k+1),tmin)
+      TQ = min(TEMPK(i,j,k+1),tmax)
+      TQ = max(TQ,tmin)
 
-      SQ(i,j,k+1) = min(SALTK(i,j,k+1),smax)
-      SQ(i,j,k+1) = max(SQ(i,j,k+1),smin)
+      SQ = min(SALTK(i,j,k+1),smax)
+      SQ = max(SQ,smin)
 
-      SQ(i,j,k+1)  = c1000 * SQ(i,j,k+1)
-      SQR(i,j,k+1) = sqrt( SQ(i,j,k+1) )
+      SQ  = c1000 * SQ
+      SQR = sqrt( SQ )
  
 
       !if(k == 4 .and. my_task==master_task )then
       !print *,"in my_state TQ,SQ,SQR are",TQ(12,13,k+1),SQ(12,13,k+1),SQR(12,13,k+1),"when k is",k
       !endif
 
-      WORK1KP1(i,j,k+1) = mwjfnums0t0(k) + TQ(i,j,k+1) * (mwjfnums0t1 + TQ(i,j,k+1) *(mwjfnums0t2(k) + &
-              mwjfnums0t3 * TQ(i,j,k+1) )) + SQ(i,j,k+1) * (mwjfnums1t0(k) + &
-              mwjfnums1t1 * TQ(i,j,k+1) + mwjfnums2t0 * SQ(i,j,k+1) )
+      WORK1KP1 = mwjfnums0t0(k) + TQ * (mwjfnums0t1 + TQ *(mwjfnums0t2(k) + &
+              mwjfnums0t3 * TQ )) + SQ * (mwjfnums1t0(k) + &
+              mwjfnums1t1 * TQ + mwjfnums2t0 * SQ )
 
       !if(my_task == master_task .and. k==4 .and. i==12 .and. j==13)then
       !print *,"in my_state WORK1 are",WORK1KP1(12,13,k+1),"for i,j,k",i,j,k    
       !endif
 
 
-      WORK2KP1(i,j,k+1) = mwjfdens0t0(k) + TQ(i,j,k+1) * (mwjfdens0t1(k) + TQ(i,j,k+1) * (mwjfdens0t2 +    &
-           TQ(i,j,k+1) * (mwjfdens0t3(k) + mwjfdens0t4 * TQ(i,j,k+1) ))) + &
-           SQ(i,j,k+1) * (mwjfdens1t0 + TQ(i,j,k+1) * (mwjfdens1t1 + TQ(i,j,k+1) * TQ(i,j,k+1) *mwjfdens1t3)+ &
-           SQR(i,j,k+1) * (mwjfdensqt0 + TQ(i,j,k+1) * TQ(i,j,k+1) *mwjfdensqt2))
+      WORK2KP1 = mwjfdens0t0(k) + TQ * (mwjfdens0t1(k) + TQ * (mwjfdens0t2 +    &
+           TQ * (mwjfdens0t3(k) + mwjfdens0t4 * TQ ))) + &
+           SQ * (mwjfdens1t0 + TQ * (mwjfdens1t1 + TQ * TQ *mwjfdens1t3)+ &
+           SQR * (mwjfdensqt0 + TQ * TQ *mwjfdensqt2))
 
-      DENOMKP1(i,j,k+1) = c1/WORK2KP1(i,j,k+1)
+      DENOMKP1 = c1/WORK2KP1
 
-      RHOOUT_WORK4(i,j,k+1)  = WORK1KP1(i,j,k+1) * DENOMKP1(i,j,k+1)
+      RHOOUT_WORK4(i,j,k+1)  = WORK1KP1 * DENOMKP1
 
       endif
-      endif
-
-      if (present(RHOFULL)) then
-
-      WORK1_FULL(i,j,k) = mwjfnums0t0(1) + TQ(i,j,k) * (mwjfnums0t1 + TQ(i,j,k) *(mwjfnums0t2(1) + &
-              mwjfnums0t3 * TQ(i,j,k) )) + SQ(i,j,k) * (mwjfnums1t0(1) + &
-              mwjfnums1t1 * TQ(i,j,k) + mwjfnums2t0 * SQ(i,j,k) )
-
-      !if(my_task == master_task)then
-      !print *,"in my_state WORK1_FULL is",WORK1_FULL(1,1,1),"for i,j,k",i,j,k    
-      !endif
-
-      WORK2_FULL(i,j,k) = mwjfdens0t0(1) + TQ(i,j,k) * (mwjfdens0t1(1) + TQ(i,j,k) * (mwjfdens0t2 +    &
-           TQ(i,j,k) * (mwjfdens0t3(1) + mwjfdens0t4 * TQ(i,j,k) ))) + &
-           SQ(i,j,k) * (mwjfdens1t0 + TQ(i,j,k) * (mwjfdens1t1 + TQ(i,j,k) * TQ(i,j,k) *mwjfdens1t3)+ &
-           SQR(i,j,k) * (mwjfdensqt0 + TQ(i,j,k) * TQ(i,j,k) *mwjfdensqt2))
-
-      DENOMK_FULL(i,j,k) = c1/WORK2_FULL(i,j,k)
-
-      RHOFULL(i,j,k) = WORK1_FULL(i,j,k) * DENOMK_FULL(i,j,k)
       endif
       
       enddo
