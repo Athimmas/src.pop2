@@ -137,6 +137,21 @@
       movie_VVEL,         &! movie id for V velocity
       movie_RHO            ! movie id for in-situ density
 
+   !dir$ attributes offload:mic :: RHOK1
+   !dir$ attributes offload:mic :: RHOK2
+   !dir$ attributes offload:mic :: RHOK3
+   !dir$ attributes offload:mic :: RHOK4
+   !dir$ attributes offload:mic :: RHOKF
+   !dir$ attributes offload:mic :: WORK
+   !dir$ attributes offload:mic :: WORK1
+   !dir$ attributes offload:mic :: WORK2
+   !dir$ attributes offload:mic :: WORK3
+   !dir$ attributes offload:mic :: WORK4
+   !dir$ attributes offload:mic :: WORKF   
+   real (r8), dimension(nx_block,ny_block,km) :: RHOK1,RHOK2,RHOK3,RHOK4,RHOKF,&
+   RHOK,WORK,WORK3,WORK4,WORKF ! arrays for testing
+ 
+
 !EOC
 !***********************************************************************
 
@@ -505,7 +520,8 @@
 
    real (r8) start_time,end_time 
 
-   real (r8), dimension(nx_block,ny_block,km) :: RHOK1,RHOK2,RHOK3,RHOK4,RHOKF,RHOK,WORK,WORK3,WORK4,WORKF
+   !real (r8), dimension(nx_block,ny_block,km) :: RHOK1,RHOK2,RHOK3,RHOK4,RHOKF,&
+   !RHOK,WORK,WORK3,WORK4,WORKF ! arrays for testing
 
    real (r8), dimension(nx_block,ny_block) :: & 
       FX,FY,              &! sum of r.h.s. forcing terms
@@ -551,8 +567,8 @@
 
 
          if(my_task == master_task)then
-
          TRCR = TRACER (:,:,:,:,mixtime,1) 
+ 
          print *,"salinity is ",TRCR(1,1,1,2)
          print *,"temp is ",TRCR(1,1,1,1)
          print *,"calling my_state by aketh"
@@ -568,57 +584,57 @@
          print *,"my_state returns ",WORKF(1,1,1)
          print *,"calling regular by aketh"
 
-         do myk=1,km
-         call state(1,myk,TRCR(:,:,myk,1),TRCR(:,:,myk,2),this_block,RHOOUT=RHOK(:,:,myk))
-         if(myk /= 1)then
-         call state(myk-1,myk,TRCR(:,:,myk-1,1),TRCR(:,:,myk-1,2),this_block,RHOOUT=RHOK3(:,:,myk-1))
-         endif
-         if(myk /= km)then
-         call state(myk+1,myk,TRCR(:,:,myk+1,1),TRCR(:,:,myk+1,2),this_block,RHOOUT=RHOK4(:,:,myk+1))
-         endif 
-         call state(myk,1,TRCR(:,:,myk,1), TRCR(:,:,myk,2), this_block, RHOFULL=RHOKF(:,:,myk))
-         enddo
+         !do myk=1,km
+         !call state(1,myk,TRCR(:,:,myk,1),TRCR(:,:,myk,2),this_block,RHOOUT=RHOK(:,:,myk))
+         !if(myk /= 1)then
+         !call state(myk-1,myk,TRCR(:,:,myk-1,1),TRCR(:,:,myk-1,2),this_block,RHOOUT=RHOK3(:,:,myk-1))
+         !endif
+         !if(myk /= km)then
+         !call state(myk+1,myk,TRCR(:,:,myk+1,1),TRCR(:,:,myk+1,2),this_block,RHOOUT=RHOK4(:,:,myk+1))
+         !endif 
+         !call state(myk,1,TRCR(:,:,myk,1), TRCR(:,:,myk,2), this_block, RHOFULL=RHOKF(:,:,myk))
+         !enddo
 
-         print *,"regular state returns",RHOKF(1,1,1)     
+         !print *,"regular state returns",RHOKF(1,1,1)    
 
-         if(all(RHOK .eq. WORK))then  
-         print *,"equal"
-         else
-         print *,"unequal"
-         endif 
+         !if(all(RHOK .eq. WORK))then  
+         !print *,"equal"
+         !else
+         !print *,"unequal"
+         !endif 
 
-         if(all(RHOK3 .eq. WORK3))then
-         print *,"equal"
-         else
-         print *,"unequal"
-         endif
+         !if(all(RHOK3 .eq. WORK3))then
+         !print *,"equal"
+         !else
+         !print *,"unequal"
+         !endif
  
-         if(all(RHOK4 .eq. WORK4))then
-         print *,"equal"
-         else
-         print *,"unequal"
-         endif
+         !if(all(RHOK4 .eq. WORK4))then
+         !print *,"equal"
+         !else
+         !print *,"unequal"
+         !endif
 
-         if(all(RHOKF .eq. WORKF))then
-         print *,"equal"
-         else
-         print *,"unequal"
-         endif
+         !if(all(RHOKF .eq. WORKF))then
+         !print *,"equal"
+         !else
+         !print *,"unequal"
+         !endif
   
 
 
 
-         do myk=1,km
-          do j=1,ny_block
-           do i=1,nx_block
+         !do myk=1,km
+          !do j=1,ny_block
+           !do i=1,nx_block
  
-           if(RHOKF(i,j,myk) /= WORKF(i,j,myk))then
-           print *,"diff is in ",i,j,myk,"with values of RHOKF and WORKF",RHOKF(i,j,myk),WORKF(i,j,myk)  
-           print *,"the difference is ",RHOKF(i,j,myk)-WORKF(i,j,myk) 
-           endif 
-          enddo
-         enddo
-        enddo   
+           !if(RHOKF(i,j,myk) /= WORKF(i,j,myk))then
+           !print *,"diff is in ",i,j,myk,"with values of RHOKF and WORKF",RHOKF(i,j,myk),WORKF(i,j,myk)  
+           !print *,"the difference is ",RHOKF(i,j,myk)-WORKF(i,j,myk) 
+           !endif 
+          !enddo
+         !enddo
+        !enddo   
         endif    
 
    !$OMP PARALLEL DO PRIVATE(iblock,this_block,k,kp1,km1,WTK,WORK1,factor)
