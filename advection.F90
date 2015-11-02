@@ -1514,7 +1514,7 @@
 ! !IROUTINE: advt
 ! !INTERFACE:
 
- subroutine advt(k,LTK,WTK,TMIX,TRCR,UUU,VVV,this_block)
+ subroutine advt(k,LTK,WTK,TMIX,TRCR,UUU,VVV,this_block,WORKF,WORK4_B,WORK3_B)
 
 ! !DESCRIPTION:
 !  Advection of tracers - this routine actually computes only
@@ -1538,6 +1538,10 @@
 
    type (block), intent(in) :: &
       this_block          ! block information for this block
+
+   real (r8), dimension(nx_block,ny_block,km) :: WORKF
+   real (r8), dimension(nx_block,ny_block,km) :: WORK4_B
+   real (r8), dimension(nx_block,ny_block,km) :: WORK3_B
 
 ! !INPUT/OUTPUT PARAMETERS:
 
@@ -1564,7 +1568,7 @@
    integer (int_kind) :: &
      i,j,n,              &! dummy loop indices
      ib, ie, jb, je,     &! domain limits
-     bid                  ! local block address
+     bid,myk               ! local block address
 
    real (r8), dimension(nx_block,ny_block) :: & 
      UTE,UTW,VTN,VTS,  &! tracer flux velocities across E,W,N,S faces
@@ -1764,6 +1768,14 @@
           call state(k-1,1,TRCR(:,:,k,1), TRCR(:,:,k,2), this_block, RHOFULL=RHOK1M)
        endif
 
+       !if(my_task == master_task)then
+       !if(all(RHOK1M .eq. WORKF(:,:,k)))then
+       !print *,"equal"
+       !else
+       !print *,"unequal" 
+       !endif 
+       !endif 
+
        call accumulate_tavg_field(RHOK1,tavg_PD,bid,k)
 
        WORK = FUE*(RHOK1 + eoshift(RHOK1,dim=1,shift=1))
@@ -1803,13 +1815,31 @@
           WORK3 = WORK
        else
           call state(k-1,k,TRCR(:,:,k-1,1),TRCR(:,:,k-1,2), this_block,RHOOUT=WORK3)
-          WORK3 = p5*(WORK3 + WORK)
+          if(my_task == master_task)then
+          if(all(WORK3 .eq. WORK3_B(:,:,k)))then
+          print *,"equal"
+          else
+          print *,"unequal"
+         endif
+       WORK3 = p5*(WORK3 + WORK)
+       endif
        endif
 
        if (k == km) then
           WORK4 = WORK
        else
           call state(k+1,k,TRCR(:,:,k+1,1),TRCR(:,:,k+1,2),this_block,RHOOUT=WORK4)
+
+       !if(my_task == master_task)then
+
+       !print *, all(WORK4 .eq. WORK4_B(:,:,k)),"for k=",k
+       !if(all(WORK4 .eq. WORK4_B(:,:,k)))then
+       !print *,"equal"
+       !else
+       !print *,"unequal"
+       !endif
+
+       !endif
 
           do j=jb,je
           do i=ib,ie

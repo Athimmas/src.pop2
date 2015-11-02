@@ -567,16 +567,16 @@
 
 
          if(my_task == master_task)then
-         TRCR = TRACER (:,:,:,:,mixtime,1) 
+         TRCR = TRACER (:,:,:,:,curtime,1) 
  
          print *,"salinity is ",TRCR(1,1,1,2)
          print *,"temp is ",TRCR(1,1,1,1)
          print *,"calling my_state by aketh"
          start_time = omp_get_wtime()
-         !dir$ offload begin target(mic:0)  
+         !!dir$ offload begin target(mic:0)  
          call my_state_advt(TRCR(:,:,:,1),TRCR(:,:,:,2),&
          RHOFULL=WORKF,RHOOUT_WORK4=WORK4,RHOOUT_WORK3=WORK3,RHOOUT_WORK=WORK)
-         !dir$ end offload
+         !!dir$ end offload
          end_time = omp_get_wtime()
          if(my_task == master_task)then
          print *,"time at advection state",end_time - start_time 
@@ -1898,7 +1898,7 @@
    print *,"time taken in hdifft is",end_time - start_time
    endif
 
-   call advt(k,WORKN,WTK,TMIX,TCUR,UCUR,VCUR,this_block)
+   call advt(k,WORKN,WTK,TMIX,TCUR,UCUR,VCUR,this_block,WORKF,WORK4,WORK3)
 
    FT = FT - WORKN   ! advt returns WORKN = +L(T) 
 

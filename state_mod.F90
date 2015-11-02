@@ -2549,13 +2549,13 @@
 
       DENOMKM1 = c1/WORK2KM1
 
-      RHOOUT_WORK3(i,j,k-1)  = WORK1KM1 * DENOMKM1 
+      RHOOUT_WORK3(i,j,k)  = WORK1KM1 * DENOMKM1 
 
       endif
       endif
 
       if(present(RHOOUT_WORK4)) then
-      if(k < km)then 
+      if(k /= km)then 
 
       TQ = min(TEMPK(i,j,k+1),tmax)
       TQ = max(TQ,tmin)
@@ -2587,7 +2587,7 @@
 
       DENOMKP1 = c1/WORK2KP1
 
-      RHOOUT_WORK4(i,j,k+1)  = WORK1KP1 * DENOMKP1
+      RHOOUT_WORK4(i,j,k)  = WORK1KP1 * DENOMKP1
 
       endif
       endif
