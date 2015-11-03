@@ -566,76 +566,78 @@
 !-----------------------------------------------------------------------
 
 
-         if(my_task == master_task)then
-         TRCR = TRACER (:,:,:,:,curtime,1) 
+         !if(my_task == master_task)then
+                TRCR = TRACER (:,:,:,:,curtime,1) 
+                !print *,"salinity is ",TRCR(1,1,1,2)
+                !print *,"temp is ",TRCR(1,1,1,1)
+                !print *,"calling my_state by aketh"
+
+                start_time = omp_get_wtime()
+                !!dir$ offload begin target(mic:0)  
+                call my_state_advt(TRCR(:,:,:,1),TRCR(:,:,:,2),&
+                RHOFULL=WORKF,RHOOUT_WORK4=WORK4,RHOOUT_WORK3=WORK3,RHOOUT_WORK=WORK)
+                !!dir$ end offload
+                end_time = omp_get_wtime()
+
+                if(my_task == master_task)then
+                        print *,"time at advection state",end_time - start_time 
+                endif 
+
+                !print *,"my_state returns ",WORKF(1,1,1)
+                !print *,"calling regular by aketh"
+
+                       !do myk=1,km
+                                !call state(1,myk,TRCR(:,:,myk,1),TRCR(:,:,myk,2),this_block,RHOOUT=RHOK(:,:,myk))
+                                !if(myk /= 1)then
+                                        !call state(myk-1,myk,TRCR(:,:,myk-1,1),TRCR(:,:,myk-1,2),this_block,RHOOUT=RHOK3(:,:,myk-1))
+                                !endif
+                                !if(myk /= km)then
+                                        !call state(myk+1,myk,TRCR(:,:,myk+1,1),TRCR(:,:,myk+1,2),this_block,RHOOUT=RHOK4(:,:,myk+1))
+                                !endif 
+                                        !call state(myk,1,TRCR(:,:,myk,1), TRCR(:,:,myk,2), this_block, RHOFULL=RHOKF(:,:,myk))
+                        !enddo
+
+                !print *,"regular state returns",RHOKF(1,1,1)    
+
+                !if(all(RHOK .eq. WORK))then  
+                        !print *,"equal"
+                !else
+                        !print *,"unequal"
+                !endif 
+
+                !if(all(RHOK3 .eq. WORK3))then
+                        !print *,"equal"
+                !else
+                        !print *,"unequal"
+                !endif
  
-         print *,"salinity is ",TRCR(1,1,1,2)
-         print *,"temp is ",TRCR(1,1,1,1)
-         print *,"calling my_state by aketh"
-         start_time = omp_get_wtime()
-         !!dir$ offload begin target(mic:0)  
-         call my_state_advt(TRCR(:,:,:,1),TRCR(:,:,:,2),&
-         RHOFULL=WORKF,RHOOUT_WORK4=WORK4,RHOOUT_WORK3=WORK3,RHOOUT_WORK=WORK)
-         !!dir$ end offload
-         end_time = omp_get_wtime()
-         if(my_task == master_task)then
-         print *,"time at advection state",end_time - start_time 
-         endif 
-         print *,"my_state returns ",WORKF(1,1,1)
-         print *,"calling regular by aketh"
+                !if(all(RHOK4 .eq. WORK4))then
+                        !print *,"equal"
+                !else
+                        !print *,"unequal"
+                !endif
 
-         !do myk=1,km
-         !call state(1,myk,TRCR(:,:,myk,1),TRCR(:,:,myk,2),this_block,RHOOUT=RHOK(:,:,myk))
-         !if(myk /= 1)then
-         !call state(myk-1,myk,TRCR(:,:,myk-1,1),TRCR(:,:,myk-1,2),this_block,RHOOUT=RHOK3(:,:,myk-1))
-         !endif
-         !if(myk /= km)then
-         !call state(myk+1,myk,TRCR(:,:,myk+1,1),TRCR(:,:,myk+1,2),this_block,RHOOUT=RHOK4(:,:,myk+1))
-         !endif 
-         !call state(myk,1,TRCR(:,:,myk,1), TRCR(:,:,myk,2), this_block, RHOFULL=RHOKF(:,:,myk))
-         !enddo
-
-         !print *,"regular state returns",RHOKF(1,1,1)    
-
-         !if(all(RHOK .eq. WORK))then  
-         !print *,"equal"
-         !else
-         !print *,"unequal"
-         !endif 
-
-         !if(all(RHOK3 .eq. WORK3))then
-         !print *,"equal"
-         !else
-         !print *,"unequal"
-         !endif
- 
-         !if(all(RHOK4 .eq. WORK4))then
-         !print *,"equal"
-         !else
-         !print *,"unequal"
-         !endif
-
-         !if(all(RHOKF .eq. WORKF))then
-         !print *,"equal"
-         !else
-         !print *,"unequal"
-         !endif
+                !if(all(RHOKF .eq. WORKF))then
+                        !print *,"equal"
+                !else
+                        !print *,"unequal"
+                !endif
   
 
 
 
-         !do myk=1,km
-          !do j=1,ny_block
-           !do i=1,nx_block
+                !do myk=1,km
+                  !do j=1,ny_block
+                   !do i=1,nx_block
  
-           !if(RHOKF(i,j,myk) /= WORKF(i,j,myk))then
-           !print *,"diff is in ",i,j,myk,"with values of RHOKF and WORKF",RHOKF(i,j,myk),WORKF(i,j,myk)  
-           !print *,"the difference is ",RHOKF(i,j,myk)-WORKF(i,j,myk) 
-           !endif 
-          !enddo
-         !enddo
-        !enddo   
-        endif    
+                    !if(RHOKF(i,j,myk) /= WORKF(i,j,myk))then
+                        !print *,"diff is in ",i,j,myk,"with values of RHOKF and WORKF",RHOKF(i,j,myk),WORKF(i,j,myk)  
+                        !print *,"the difference is ",RHOKF(i,j,myk)-WORKF(i,j,myk) 
+                    !endif 
+                   !enddo
+                  !enddo
+                 !enddo   
+         !endif    
 
    !$OMP PARALLEL DO PRIVATE(iblock,this_block,k,kp1,km1,WTK,WORK1,factor)
 
@@ -1898,7 +1900,7 @@
    print *,"time taken in hdifft is",end_time - start_time
    endif
 
-   call advt(k,WORKN,WTK,TMIX,TCUR,UCUR,VCUR,this_block,WORKF,WORK4,WORK3)
+   call advt(k,WORKN,WTK,TMIX,TCUR,UCUR,VCUR,this_block,WORKF,WORK4,WORK3,WORK)
 
    FT = FT - WORKN   ! advt returns WORKN = +L(T) 
 

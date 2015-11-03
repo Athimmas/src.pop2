@@ -1514,7 +1514,7 @@
 ! !IROUTINE: advt
 ! !INTERFACE:
 
- subroutine advt(k,LTK,WTK,TMIX,TRCR,UUU,VVV,this_block,WORKF,WORK4_B,WORK3_B)
+ subroutine advt(k,LTK,WTK,TMIX,TRCR,UUU,VVV,this_block,WORKF,WORK4_B,WORK3_B,WORK_B)
 
 ! !DESCRIPTION:
 !  Advection of tracers - this routine actually computes only
@@ -1542,6 +1542,7 @@
    real (r8), dimension(nx_block,ny_block,km) :: WORKF
    real (r8), dimension(nx_block,ny_block,km) :: WORK4_B
    real (r8), dimension(nx_block,ny_block,km) :: WORK3_B
+   real (r8), dimension(nx_block,ny_block,km) :: WORK_B
 
 ! !INPUT/OUTPUT PARAMETERS:
 
@@ -1810,19 +1811,40 @@
        accumulate_tavg_now(tavg_VQ) ) then
 
        call state(k,k,TRCR(:,:,k,1),TRCR(:,:,k,2), this_block,RHOOUT=WORK)
+       if(all(WORK .eq. WORK_B(:,:,k)))then
+       print *,"equal"
+       else
+       print *,"unequal"   
+       endif  
 
        if (k == 1 ) then
           WORK3 = WORK
        else
           call state(k-1,k,TRCR(:,:,k-1,1),TRCR(:,:,k-1,2), this_block,RHOOUT=WORK3)
-          if(my_task == master_task)then
-          if(all(WORK3 .eq. WORK3_B(:,:,k)))then
-          print *,"equal"
-          else
-          print *,"unequal"
-         endif
+
+          !if(my_task == master_task)then
+               !if(all(WORK3 .eq. WORK3_B(:,:,k)))then
+               !print *,"equal"
+               !else
+               !print *,"unequal"
+
+               !do j=1,ny_block
+               !do i=1,nx_block
+
+                  !if(WORK3(i,j) == WORK3_B(i,j,k))then
+                  !print *,"diff is in ",i,j,k,"with values of WORK3 and &
+                  !WORK3_B",WORK3(i,j),WORK3_B(i,j,k)  
+                  !print *,"the difference is ",WORK3(i,j) - WORK3_B(i,j,k)       
+                  !open(unit=10,file="/home/aketh/ocn_correctness_data/checker3.txt",status="unknown",position="append",action="write")
+                  !write(10,*),i,j,k,TRCR(i,j,k,1),TRCR(i,j,k,2)
+                  !close(10)
+                  !endif 
+
+               !enddo
+               !enddo
+               !endif
+          !endif  
        WORK3 = p5*(WORK3 + WORK)
-       endif
        endif
 
        if (k == km) then
@@ -1837,8 +1859,6 @@
        !print *,"equal"
        !else
        !print *,"unequal"
-       !endif
-
        !endif
 
           do j=jb,je
