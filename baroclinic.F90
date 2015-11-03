@@ -532,6 +532,8 @@
    type (block) ::        &
       this_block           ! block information for current block
 
+   real (r8) start_time,end_time
+
 !-----------------------------------------------------------------------
 !
 !  compute flux velocities in ghost cells
@@ -563,14 +565,13 @@
 !
 !-----------------------------------------------------------------------
 
-
-    TRCR = TRACER (:,:,:,:,curtime,1) 
-
-    !dir$ offload begin target(mic:0)  
+    !dir$ offload begin target(mic:0)in(TRACER)
+    TRCR = TRACER (:,:,:,:,curtime,1)
     call my_state_advt(TRCR(:,:,:,1),TRCR(:,:,:,2),&
     RHOFULL=WORKF,RHOOUT_WORK4=WORK4,RHOOUT_WORK3=WORK3,RHOOUT_WORK=WORK)
     !dir$ end offload
 
+    print *,end_time - start_time
    
    !$OMP PARALLEL DO PRIVATE(iblock,this_block,k,kp1,km1,WTK,WORK1,factor)
 

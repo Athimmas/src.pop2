@@ -35,7 +35,8 @@
    end type
 
 ! !PUBLIC DATA MEMBERS:
-
+   
+   !dir$ attributes offload:mic :: TRACER
    real (r8), dimension(nx_block,ny_block,km,nt,3,max_blocks_clinic), &
       target :: &
       TRACER     ! 3d tracer fields for all blocks at 3 time levels
@@ -61,6 +62,7 @@
       target :: &
       PGUESS     ! next guess for surface pressure
 
+   !dir$ attributes offload:mic :: curtime
    integer (int_kind) :: &! time indices for prognostic arrays
       curtime,           &! current time level  (n) 
       newtime,           &! next time level     (n+1)

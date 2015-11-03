@@ -51,6 +51,7 @@
    use registry
    use overflows
    use overflow_type
+   use omp_lib 
 
    implicit none
    private
@@ -1586,6 +1587,8 @@
      TRACER_N,         &! tracer value on north face
      FLUX_T             ! tracer tendency due to flux through top   face, volume normalized
 
+   real (r8) start_time,end_time
+
 !-----------------------------------------------------------------------
 !
 !  advection fluxes for T box.
@@ -1762,6 +1765,7 @@
        accumulate_tavg_now(tavg_WRHO)) then
 
        call state(k,1,TRCR(:,:,k,1), TRCR(:,:,k,2), this_block, RHOFULL=RHOK1)
+
 
        if (k == 1) then
           RHOK1M = RHOK1
