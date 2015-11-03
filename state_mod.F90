@@ -2521,7 +2521,9 @@
 
  
       if(present(RHOOUT_WORK3)) then 
-      if(k /= 1)then
+      if(k == 1)then
+      RHOOUT_WORK3(i,j,k) = RHOOUT_WORK(i,j,k)
+      else
 
       TQ = min(TEMPK(i,j,k-1),tmax)
       TQ = max(TQ,tmin)
@@ -2555,7 +2557,9 @@
       endif
 
       if(present(RHOOUT_WORK4)) then
-      if(k /= km)then 
+      if(k == km)then
+      RHOOUT_WORK4(i,j,k) = RHOOUT_WORK(i,j,k)
+      else 
 
       TQ = min(TEMPK(i,j,k+1),tmax)
       TQ = max(TQ,tmin)
