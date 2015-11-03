@@ -1769,14 +1769,6 @@
           call state(k-1,1,TRCR(:,:,k,1), TRCR(:,:,k,2), this_block, RHOFULL=RHOK1M)
        endif
 
-       !if(my_task == master_task)then
-       !if(all(RHOK1M .eq. WORKF(:,:,k)))then
-       !print *,"equal"
-       !else
-       !print *,"unequal" 
-       !endif 
-       !endif 
-
        call accumulate_tavg_field(RHOK1,tavg_PD,bid,k)
 
        WORK = FUE*(RHOK1 + eoshift(RHOK1,dim=1,shift=1))
@@ -1811,39 +1803,12 @@
        accumulate_tavg_now(tavg_VQ) ) then
 
        call state(k,k,TRCR(:,:,k,1),TRCR(:,:,k,2), this_block,RHOOUT=WORK)
-       if(all(WORK .eq. WORK_B(:,:,k)))then
-       print *,"equal"
-       else
-       print *,"unequal"   
-       endif  
 
        if (k == 1 ) then
           WORK3 = WORK
        else
           call state(k-1,k,TRCR(:,:,k-1,1),TRCR(:,:,k-1,2), this_block,RHOOUT=WORK3)
 
-          !if(my_task == master_task)then
-               !if(all(WORK3 .eq. WORK3_B(:,:,k)))then
-               !print *,"equal"
-               !else
-               !print *,"unequal"
-
-               !do j=1,ny_block
-               !do i=1,nx_block
-
-                  !if(WORK3(i,j) == WORK3_B(i,j,k))then
-                  !print *,"diff is in ",i,j,k,"with values of WORK3 and &
-                  !WORK3_B",WORK3(i,j),WORK3_B(i,j,k)  
-                  !print *,"the difference is ",WORK3(i,j) - WORK3_B(i,j,k)       
-                  !open(unit=10,file="/home/aketh/ocn_correctness_data/checker3.txt",status="unknown",position="append",action="write")
-                  !write(10,*),i,j,k,TRCR(i,j,k,1),TRCR(i,j,k,2)
-                  !close(10)
-                  !endif 
-
-               !enddo
-               !enddo
-               !endif
-          !endif  
        WORK3 = p5*(WORK3 + WORK)
        endif
 
@@ -1851,15 +1816,6 @@
           WORK4 = WORK
        else
           call state(k+1,k,TRCR(:,:,k+1,1),TRCR(:,:,k+1,2),this_block,RHOOUT=WORK4)
-
-       !if(my_task == master_task)then
-
-       !print *, all(WORK4 .eq. WORK4_B(:,:,k)),"for k=",k
-       !if(all(WORK4 .eq. WORK4_B(:,:,k)))then
-       !print *,"equal"
-       !else
-       !print *,"unequal"
-       !endif
 
           do j=jb,je
           do i=ib,ie
