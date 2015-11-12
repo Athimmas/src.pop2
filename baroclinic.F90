@@ -148,7 +148,7 @@
    !dir$ attributes offload:mic :: WORK3
    !dir$ attributes offload:mic :: WORK4
    !dir$ attributes offload:mic :: WORKF   
-   real (r8), dimension(nx_block,ny_block,km) :: RHOK1,RHOK2,RHOK3,RHOK4,RHOKF,&
+   real (r8), dimension(nx_block,ny_block,km),save :: RHOK1,RHOK2,RHOK3,RHOK4,RHOKF,&
    RHOK,WORK,WORK3,WORK4,WORKF ! arrays for testing
  
 
@@ -515,7 +515,7 @@
       iblock,             &! counter for block loops
       kp1,km1              ! level index for k+1, k-1 levels
 
-   real (r8), dimension(nx_block,ny_block,km,nt) :: &
+   real (r8), dimension(nx_block,ny_block,km,nt),save :: &
       TRCR                
 
    !real (r8), dimension(nx_block,ny_block,km) :: RHOK1,RHOK2,RHOK3,RHOK4,RHOKF,&
@@ -565,11 +565,17 @@
 !
 !-----------------------------------------------------------------------
 
-    !dir$ offload begin target(mic:0)in(TRACER)
-    TRCR = TRACER (:,:,:,:,curtime,1)
+    !if(my_task == master_task)then 
+
+    TRCR = TRACER (:,:,:,:,curtime,1) 
+    start_time = omp_get_wtime()
+    !dir$ offload target(mic:0)in(TRCR)out(WORKF,WORK4,WORK4,WORK)signal(1)
     call my_state_advt(TRCR(:,:,:,1),TRCR(:,:,:,2),&
     RHOFULL=WORKF,RHOOUT_WORK4=WORK4,RHOOUT_WORK3=WORK3,RHOOUT_WORK=WORK)
-    !dir$ end offload
+    !!dir$ end offload
+    end_time = omp_get_wtime()
+
+    !endif
 
     print *,end_time - start_time
    
