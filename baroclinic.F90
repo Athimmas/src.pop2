@@ -148,8 +148,13 @@
    !dir$ attributes offload:mic :: WORK3
    !dir$ attributes offload:mic :: WORK4
    !dir$ attributes offload:mic :: WORKF   
-   real (r8), dimension(nx_block,ny_block,km),save :: RHOK1,RHOK2,RHOK3,RHOK4,RHOKF,&
+   real (r8), allocatable ,dimension(:,:,:),save :: RHOK1,RHOK2,RHOK3,RHOK4,RHOKF,&
    RHOK,WORK,WORK3,WORK4,WORKF ! arrays for testing
+
+  !dir$ attributes offload:mic :: TRCR
+   real (r8), allocatable,save :: &
+   TRCR(:,:,:,:)
+ 
  
 
 !EOC
@@ -177,6 +182,8 @@
 !  local variables
 !
 !-----------------------------------------------------------------------
+
+   real (r8) start_time,end_time
 
    integer (int_kind) :: &
       nml_error          ! namelist i/o error flag
@@ -233,6 +240,23 @@
                           'Surface temperature reset to freezing off'
       endif
    endif
+
+
+!----------------------------------------------------------------------
+!
+!   for offload variable initialization
+!
+!----------------------------------------------------------------------
+
+    start_time = omp_get_wtime()
+    allocate(TRCR(nx_block,ny_block,km,nt))
+    allocate(WORK(nx_block,ny_block,km),WORKF(nx_block,ny_block,km),WORK3(nx_block,ny_block,km),WORK4(nx_block,ny_block,km))
+
+    !dir$ offload_transfer target(mic:0)nocopy(WORK,TRCR,WORKF,WORK3,WORK4:alloc_if(.TRUE.)free_if(.FALSE.))signal(1)
+
+    end_time = omp_get_wtime()
+
+    print *,"time taken for initialization is ",end_time - start_time
 
    call broadcast_scalar(reset_to_freezing, master_task)
 
@@ -515,8 +539,8 @@
       iblock,             &! counter for block loops
       kp1,km1              ! level index for k+1, k-1 levels
 
-   real (r8), dimension(nx_block,ny_block,km,nt),save :: &
-      TRCR                
+   !real (r8), allocatable,save :: &
+   !   TRCR(:,:,:,:)                
 
    !real (r8), dimension(nx_block,ny_block,km) :: RHOK1,RHOK2,RHOK3,RHOK4,RHOKF,&
    !RHOK,WORK,WORK3,WORK4,WORKF ! arrays for testing
@@ -533,6 +557,8 @@
       this_block           ! block information for current block
 
    real (r8) start_time,end_time
+ 
+   integer (int_kind),save :: flag = 1
 
 !-----------------------------------------------------------------------
 !
@@ -565,19 +591,17 @@
 !
 !-----------------------------------------------------------------------
 
-    !if(my_task == master_task)then 
-
-    TRCR = TRACER (:,:,:,:,curtime,1) 
     start_time = omp_get_wtime()
-    !dir$ offload target(mic:0)in(TRCR)out(WORKF,WORK4,WORK4,WORK)signal(1)
+
+    !dir$ offload begin target(mic:0)in(TRCR:alloc_if(.FALSE.) free_if(.FALSE.)) out(WORKF,WORK3,WORK4,WORK:alloc_if(.FALSE.) free_if(.FALSE.))signal(2)
+    TRCR = TRACER (:,:,:,:,curtime,1)
     call my_state_advt(TRCR(:,:,:,1),TRCR(:,:,:,2),&
     RHOFULL=WORKF,RHOOUT_WORK4=WORK4,RHOOUT_WORK3=WORK3,RHOOUT_WORK=WORK)
-    !!dir$ end offload
+    !dir$ end offload
+
     end_time = omp_get_wtime()
 
-    !endif
-
-    print *,end_time - start_time
+    print *,"time taken for offload is",end_time - start_time
    
    !$OMP PARALLEL DO PRIVATE(iblock,this_block,k,kp1,km1,WTK,WORK1,factor)
 
@@ -1739,6 +1763,8 @@
    real (r8), dimension(nx_block,ny_block) :: &
       WORKSW
 
+   real (r8) :: start_time,end_time
+
 
 !-----------------------------------------------------------------------
 !
@@ -1826,7 +1852,6 @@
       endif
 
    endif
-
 
    call advt(k,WORKN,WTK,TMIX,TCUR,UCUR,VCUR,this_block,WORKF,WORK4,WORK3,WORK)
 

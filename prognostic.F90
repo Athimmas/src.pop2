@@ -106,6 +106,9 @@
       newtime = 3
 
       TRACER  = c0
+     
+      !dir$ offload_transfer target(mic:0)in(TRACER:alloc_if(.TRUE.) free_if(.FALSE.))signal(3)
+
       UVEL    = c0
       VVEL    = c0
       RHO     = c0

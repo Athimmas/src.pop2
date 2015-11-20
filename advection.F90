@@ -51,7 +51,6 @@
    use registry
    use overflows
    use overflow_type
-   use omp_lib 
 
    implicit none
    private
@@ -1515,7 +1514,8 @@
 ! !IROUTINE: advt
 ! !INTERFACE:
 
- subroutine advt(k,LTK,WTK,TMIX,TRCR,UUU,VVV,this_block,WORKF,WORK4_B,WORK3_B,WORK_B)
+ subroutine advt(k,LTK,WTK,TMIX,TRCR,UUU,VVV,this_block &
+                 ,WORKF,WORK4_B,WORK3_B,WORK_B)
 
 ! !DESCRIPTION:
 !  Advection of tracers - this routine actually computes only
@@ -1540,10 +1540,12 @@
    type (block), intent(in) :: &
       this_block          ! block information for this block
 
-   real (r8), dimension(nx_block,ny_block,km) :: WORKF
-   real (r8), dimension(nx_block,ny_block,km) :: WORK4_B
-   real (r8), dimension(nx_block,ny_block,km) :: WORK3_B
-   real (r8), dimension(nx_block,ny_block,km) :: WORK_B
+   real (r8), dimension(nx_block,ny_block,km), intent(in) :: WORKF
+   real (r8), dimension(nx_block,ny_block,km), intent(in) :: WORK4_B
+   real (r8), dimension(nx_block,ny_block,km), intent(in) :: WORK3_B
+   real (r8), dimension(nx_block,ny_block,km), intent(in) :: WORK_B
+
+ 
 
 ! !INPUT/OUTPUT PARAMETERS:
 
@@ -1570,7 +1572,7 @@
    integer (int_kind) :: &
      i,j,n,              &! dummy loop indices
      ib, ie, jb, je,     &! domain limits
-     bid,myk               ! local block address
+     bid                  ! local block address
 
    real (r8), dimension(nx_block,ny_block) :: & 
      UTE,UTW,VTN,VTS,  &! tracer flux velocities across E,W,N,S faces
@@ -1586,8 +1588,6 @@
      TRACER_E,         &! tracer value on east face
      TRACER_N,         &! tracer value on north face
      FLUX_T             ! tracer tendency due to flux through top   face, volume normalized
-
-   real (r8) start_time,end_time
 
 !-----------------------------------------------------------------------
 !
@@ -1764,8 +1764,8 @@
        accumulate_tavg_now(tavg_VRHO) .or.  &
        accumulate_tavg_now(tavg_WRHO)) then
 
-       call state(k,1,TRCR(:,:,k,1), TRCR(:,:,k,2), this_block, RHOFULL=RHOK1)
 
+       call state(k,1,TRCR(:,:,k,1), TRCR(:,:,k,2), this_block, RHOFULL=RHOK1)
 
        if (k == 1) then
           RHOK1M = RHOK1
@@ -1806,18 +1806,22 @@
        accumulate_tavg_now(tavg_UQ)   .or.  &
        accumulate_tavg_now(tavg_VQ) ) then
 
+
        call state(k,k,TRCR(:,:,k,1),TRCR(:,:,k,2), this_block,RHOOUT=WORK)
+
 
        if (k == 1 ) then
           WORK3 = WORK
+
        else
           call state(k-1,k,TRCR(:,:,k-1,1),TRCR(:,:,k-1,2), this_block,RHOOUT=WORK3)
+          WORK3 = p5*(WORK3 + WORK)
 
-       WORK3 = p5*(WORK3 + WORK)
        endif
 
        if (k == km) then
           WORK4 = WORK
+
        else
           call state(k+1,k,TRCR(:,:,k+1,1),TRCR(:,:,k+1,2),this_block,RHOOUT=WORK4)
 
